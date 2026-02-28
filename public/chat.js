@@ -107,6 +107,7 @@ async function sendMessage() {
 		// Read streaming SSE response until the reader signals EOF.
 		// The special "[DONE]" marker is handled in the event-processing logic
 		// and does not require a separate loop state flag.
+		let sawDone = false;
 		// The special "[DONE]" marker is handled in the event-processing logic
 		// and does not require a separate loop state flag.
 		while (true) {
@@ -137,25 +138,11 @@ async function sendMessage() {
 						content = jsonData.response;
 					} else if (jsonData.choices?.[0]?.delta?.content) {
 						content = jsonData.choices[0].delta.content;
-					}
-					if (content) {
-						responseText += content;
-						flushAssistantText();
-					}
-				} catch (e) {
-					console.error("Error parsing SSE data as JSON:", e, data);
-				}
-			}
-			if (sawDone) {
-				break;
-			}
-		}
-
-		// Add completed response to chat history
-		if (responseText.length > 0) {
-			chatHistory.push({ role: "assistant", content: responseText });
-		}
-	} catch (error) {
+				responseText = processSseDataChunk(
+					data,
+					responseText,
+					flushAssistantText,
+				);
 		console.error("Error:", error);
 		addMessageToChat(
 			"assistant",
