@@ -107,33 +107,22 @@ async function sendMessage() {
 		// Read streaming SSE response until the reader signals EOF.
 		// The special "[DONE]" marker is handled in the event-processing logic
 		// and does not require a separate loop state flag.
+		// The special "[DONE]" marker is handled in the event-processing logic
+		// and does not require a separate loop state flag.
 		while (true) {
 			const { done, value } = await reader.read();
-
+				// Process any remaining complete events in buffer. If a "[DONE]"
+				// marker is present, we stop processing further events.
 			if (done) {
 				// Process any remaining complete events in buffer. If a "[DONE]"
 				// marker is present, we stop processing further events.
 				const parsed = consumeSseEvents(buffer + "\n\n");
 				for (const data of parsed.events) {
-					if (data === "[DONE]") {
-						break;
-					}
 					responseText = processSseDataChunk(
 						data,
 						responseText,
 						flushAssistantText,
 					);
-				}
-				break;
-			}
-
-			// Decode chunk
-			buffer += decoder.decode(value, { stream: true });
-			const parsed = consumeSseEvents(buffer);
-			buffer = parsed.buffer;
-			for (const data of parsed.events) {
-				if (data === "[DONE]") {
-					sawDone = true;
 					buffer = "";
 					break;
 				}
@@ -230,6 +219,37 @@ function consumeSseEvents(buffer) {
  * @param {string} responseText - Current accumulated response text.
  * @param {Function} flushAssistantText - Callback to update the UI.
  * @returns {string} Updated response text.
+
+/**
+ * Helper to parse a single SSE data chunk and update the response text.
+ *
+ * Handles both Workers AI format (`response`) and OpenAI-style streaming
+ * format (`choices[0].delta.content`).
+ *
+ * @param {string} data - Raw SSE data line (without "data:" prefix).
+ * @param {string} responseText - Current accumulated response text.
+ * @param {Function} flushAssistantText - Callback to update the UI.
+ * @returns {string} Updated response text.
+ */
+function processSseDataChunk(data, responseText, flushAssistantText) {
+	try {
+		const jsonData = JSON.parse(data);
+		// Handle both Workers AI format (response) and OpenAI format (choices[0].delta.content)
+		let content = "";
+		if (typeof jsonData.response === "string" && jsonData.response.length > 0) {
+			content = jsonData.response;
+		} else if (jsonData.choices?.[0]?.delta?.content) {
+			content = jsonData.choices[0].delta.content;
+		}
+		if (content) {
+			responseText += content;
+			flushAssistantText();
+		}
+	} catch (e) {
+		console.error("Error parsing SSE data as JSON:", e, data);
+	}
+	return responseText;
+}
  */
 function processSseDataChunk(data, responseText, flushAssistantText) {
 	try {
