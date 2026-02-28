@@ -115,25 +115,11 @@ async function sendMessage() {
 					if (data === "[DONE]") {
 						break;
 					}
-					try {
-						const jsonData = JSON.parse(data);
-						// Handle both Workers AI format (response) and OpenAI format (choices[0].delta.content)
-						let content = "";
-						if (
-							typeof jsonData.response === "string" &&
-							jsonData.response.length > 0
-						) {
-							content = jsonData.response;
-						} else if (jsonData.choices?.[0]?.delta?.content) {
-							content = jsonData.choices[0].delta.content;
-						}
-						if (content) {
-							responseText += content;
-							flushAssistantText();
-						}
-					} catch (e) {
-						console.error("Error parsing SSE data as JSON:", e, data);
-					}
+					responseText = processSseDataChunk(
+						data,
+						responseText,
+						flushAssistantText,
+					);
 				}
 				break;
 			}
@@ -229,4 +215,35 @@ function consumeSseEvents(buffer) {
 		events.push(dataLines.join("\n"));
 	}
 	return { events, buffer: normalized };
+}
+
+/**
+ * Helper to parse a single SSE data chunk and update the response text.
+ *
+ * Handles both Workers AI format (`response`) and OpenAI-style streaming
+ * format (`choices[0].delta.content`).
+ *
+ * @param {string} data - Raw SSE data line (without "data:" prefix).
+ * @param {string} responseText - Current accumulated response text.
+ * @param {Function} flushAssistantText - Callback to update the UI.
+ * @returns {string} Updated response text.
+ */
+function processSseDataChunk(data, responseText, flushAssistantText) {
+	try {
+		const jsonData = JSON.parse(data);
+		// Handle both Workers AI format (response) and OpenAI format (choices[0].delta.content)
+		let content = "";
+		if (typeof jsonData.response === "string" && jsonData.response.length > 0) {
+			content = jsonData.response;
+		} else if (jsonData.choices?.[0]?.delta?.content) {
+			content = jsonData.choices[0].delta.content;
+		}
+		if (content) {
+			responseText += content;
+			flushAssistantText();
+		}
+	} catch (e) {
+		console.error("Error parsing SSE data as JSON:", e, data);
+	}
+	return responseText;
 }
