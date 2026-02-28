@@ -20,6 +20,19 @@ let chatHistory = [
 ];
 let isProcessing = false;
 
+/**
+ * Creates and appends an assistant message element to the chat.
+ * Returns the inner <p> element so the caller can update its contents.
+ */
+function createAssistantMessageElement() {
+	const assistantMessageEl = document.createElement("div");
+	assistantMessageEl.className = "message assistant-message";
+	const assistantTextEl = document.createElement("p");
+	assistantMessageEl.appendChild(assistantTextEl);
+	chatMessages.appendChild(assistantMessageEl);
+	return assistantTextEl;
+}
+
 // Auto-resize textarea as user types
 userInput.addEventListener("input", function () {
 	this.style.height = "auto";
@@ -66,11 +79,7 @@ async function sendMessage() {
 
 	try {
 		// Create new assistant response element
-		const assistantMessageEl = document.createElement("div");
-		assistantMessageEl.className = "message assistant-message";
-		assistantMessageEl.innerHTML = "<p></p>";
-		chatMessages.appendChild(assistantMessageEl);
-		const assistantTextEl = assistantMessageEl.querySelector("p");
+		const assistantTextEl = createAssistantMessageElement();
 
 		// Scroll to bottom
 		chatMessages.scrollTop = chatMessages.scrollHeight;
