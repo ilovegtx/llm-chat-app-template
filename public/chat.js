@@ -88,7 +88,7 @@ async function sendMessage() {
 
 		// Handle errors
 		if (!response.ok) {
-			throw new Error("Failed to get response");
+			throw new Error(`Failed to get response: ${response.status} ${response.statusText}`);
 		}
 		if (!response.body) {
 			throw new Error("Response body is null");
